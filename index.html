@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 16px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .title { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+  .subtitle { font-size: 12px; color: #888; margin-top: 2px; }
+  .legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .legend-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  td { border: 1px solid #fff; }
+  .row-label { font-size: 12px; font-weight: 500; color: #1a1a1a; padding: 4px 8px; white-space: nowrap; width: 110px; }
+  .hour-label { font-size: 10px; color: #888; text-align: center; padding: 2px 0; font-weight: 500; }
+  .cell { width: 22px; height: 28px; text-align: center; font-size: 9px; font-weight: 600; cursor: default; border-radius: 2px; }
+  .no-data { background: #f5f5f5; color: #ccc; }
+  .zero { background: #f5f5f5; color: #bbb; }
+  .low { background: #EAF3DE; color: #3B6D11; }
+  .ideal { background: #C0DD97; color: #27500A; }
+  .high { background: #EF9F27; color: #633806; }
+  .full { background: #E24B4A; color: #501313; }
+  .current-time { outline: 2px solid #378ADD; outline-offset: -1px; border-radius: 2px; }
+  #last-updated { font-size: 11px; color: #aaa; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="title">Meeting Room Utilisation</div>
+    <div class="subtitle" id="date-label"></div>
+  </div>
+  <div class="legend" style="gap: 4px;">
+    <span>0%</span>
+    <div class="legend-swatch" style="background:#EAF3DE;"></div>
+    <div class="legend-swatch" style="background:#C0DD97;"></div>
+    <div class="legend-swatch" style="background:#EF9F27;"></div>
+    <div class="legend-swatch" style="background:#E24B4A;"></div>
+    <span>100%</span>
+  </div>
+</div>
+
+<div style="overflow-x: auto;">
+  <table>
+    <thead id="grid-head"></thead>
+    <tbody id="grid-body"></tbody>
+  </table>
+</div>
+
+<div class="legend-row">
+  <div class="legend-item"><div class="legend-swatch" style="background:#f5f5f5; border: 1px solid #e0e0e0;"></div> No data</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#EAF3DE;"></div> Low (1–25%)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#C0DD97;"></div> Ideal (26–50%)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#EF9F27;"></div> High (51–75%)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#E24B4A;"></div> Full (76–100%)</div>
+</div>
+
+<div id="last-updated"></div>
+
+<script>
+  // ============================================================
+  // CONFIGURATION — update these values
+  // ============================================================
+  const DEVICE_TOKEN = "5e199bc2-3543-4da1-97f5-1dcad9f117d4";
+  const DEVICE_ID     = "6a06e2fcbc24cc000c1119fb";
+  const ROOM_NAME     = "Meeting Room 1";
+  const CAPACITY      = 12;
+  const START_HOUR    = 8;
+  const END_HOUR      = 18;
+  const SLOT_MINS     = 15;
+  const REFRESH_MS    = 5 * 60 * 1000; // refresh every 5 minutes
+  // ============================================================
+
+  // Build slot list
+  const slots = [];
+  for (let h = START_HOUR; h < END_HOUR; h++) {
+    for (let m = 0; m < 60; m += SLOT_MINS) {
+      slots.push({ h, m });
+    }
+  }
+
+  // Set date label
+  const today = new Date();
+  document.getElementById('date-label').textContent =
+    today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Build table header
+  function buildHeader() {
+    const head = document.getElementById('grid-head');
+    let html = '<tr><td class="row-label" style="font-size:11px; color:#aaa;">Room</td>';
+    slots.forEach(s => {
+      const isHour = s.m === 0;
+      html += `<td class="hour-label" style="font-weight:${isHour ? '600' : '400'}; color:${isHour ? '#555' : '#ccc'};">
+        ${isHour ? String(s.h).padStart(2,'0') : ''}
+      </td>`;
+    });
+    html += '</tr>';
+    head.innerHTML = html;
+  }
+
+  function getCellClass(pct) {
+    if (pct === null) return 'no-data';
+    if (pct === 0)    return 'zero';
+    if (pct <= 25)    return 'low';
+    if (pct <= 50)    return 'ideal';
+    if (pct <= 75)    return 'high';
+    return 'full';
+  }
+
+  function getCellText(pct) {
+    if (pct === null || pct === 0) return '';
+    return pct + '%';
+  }
+
+  function isCurrentSlot(h, m) {
+    const now = new Date();
+    const nowH = now.getHours();
+    const nowM = now.getMinutes();
+    const slotM = Math.floor(nowM / SLOT_MINS) * SLOT_MINS;
+    return nowH === h && slotM === m;
+  }
+
+  function buildRow(dataMap) {
+    const body = document.getElementById('grid-body');
+    let html = `<tr><td class="row-label">${ROOM_NAME}</td>`;
+    slots.forEach(s => {
+      const key = `${s.h}:${String(s.m).padStart(2, '0')}`;
+      const pct = dataMap.hasOwnProperty(key) ? dataMap[key] : null;
+      const cls = getCellClass(pct);
+      const txt = getCellText(pct);
+      const isCurrent = isCurrentSlot(s.h, s.m);
+      const tooltip = `${String(s.h).padStart(2,'0')}:${String(s.m).padStart(2,'0')} — ${pct !== null ? pct + '%' : 'no data'}`;
+      html += `<td class="cell ${cls}${isCurrent ? ' current-time' : ''}" title="${tooltip}">${txt}</td>`;
+    });
+    html += '</tr>';
+    body.innerHTML = html;
+  }
+
+  async function loadData() {
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(START_HOUR, 0, 0, 0);
+    const dayEnd = new Date(now);
+    dayEnd.setHours(END_HOUR, 0, 0, 0);
+
+    try {
+      const url = `https://api.eu-w1.tago.io/data?variable=utilisation_pct&qty=200&ordination=asc&device=${DEVICE_ID}`;
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': DEVICE_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const json = await res.json();
+      const dataMap = {};
+
+      if (json.status && json.result) {
+        json.result.forEach(item => {
+          const d = new Date(item.time);
+          const h = d.getHours();
+          const rawM = d.getMinutes();
+          const slotM = Math.floor(rawM / SLOT_MINS) * SLOT_MINS;
+          if (h >= START_HOUR && h < END_HOUR) {
+            const key = `${h}:${String(slotM).padStart(2, '0')}`;
+            dataMap[key] = Math.round(item.value);
+          }
+        });
+      }
+
+      buildRow(dataMap);
+
+      const updated = new Date();
+      document.getElementById('last-updated').textContent =
+        'Last updated: ' + updated.toLocaleTimeString('en-GB');
+
+    } catch (e) {
+      console.error('Error loading data:', e);
+      buildRow({});
+    }
+  }
+
+  // Initialise
+  buildHeader();
+  loadData();
+
+  // Refresh automatically
+  setInterval(loadData, REFRESH_MS);
+</script>
+</body>
+</html>
