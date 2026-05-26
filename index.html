@@ -7,25 +7,21 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 16px; }
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .title { font-size: 14px; font-weight: 500; color: #1a1a1a; }
-  .subtitle { font-size: 12px; color: #888; margin-top: 2px; }
-  .legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888; }
-  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
-  .legend-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
   table { border-collapse: collapse; width: 100%; table-layout: fixed; }
   td { border: 1px solid #fff; }
   .row-label { font-size: 12px; font-weight: 500; color: #1a1a1a; padding: 4px 8px; white-space: nowrap; width: 110px; }
   .hour-label { font-size: 10px; color: #888; text-align: center; padding: 2px 0; font-weight: 500; }
   .cell { width: 22px; height: 28px; text-align: center; font-size: 9px; font-weight: 600; cursor: default; border-radius: 2px; }
   .no-data { background: #f5f5f5; color: #ccc; }
-  .zero { background: #f5f5f5; color: #bbb; }
-  .low { background: #22C55E; color: #fff; }
-  .ideal { background: #A3E635; color: #2D4A05; }
-  .medium { background: #FACC15; color: #6B4C00; }
-  .high { background: #F97316; color: #fff; }
-  .full { background: #DC2626; color: #fff; }
+  .zero   { background: #f5f5f5; color: #bbb; }
+  .band1  { background: #14B8A6; color: #fff; }
+  .band2  { background: #6DCE70; color: #fff; }
+  .band3  { background: #A8D83A; color: #fff; }
+  .band4  { background: #EAB308; color: #fff; }
+  .band5  { background: #F97316; color: #fff; }
+  .band6  { background: #EF4444; color: #fff; }
+  .band7  { background: #DC2626; color: #fff; }
   .current-time { outline: 2px solid #378ADD; outline-offset: -1px; border-radius: 2px; }
   #last-updated { font-size: 11px; color: #aaa; margin-top: 8px; }
 </style>
@@ -34,34 +30,43 @@
 
 <div class="header">
   <div>
-    <div class="title">Meeting Room Utilisation</div>
-    <div class="subtitle" id="date-label"></div>
+    <div style="font-size:14px; font-weight:500; color:#1a1a1a;">Meeting Room Utilisation</div>
+    <div style="font-size:12px; color:#888; margin-top:2px;" id="date-label"></div>
   </div>
-  <div class="legend" style="gap: 4px;">
-    <span>0%</span>
-    <div class="legend-swatch" style="background:#22C55E;"></div>
-    <div class="legend-swatch" style="background:#A3E635;"></div>
-    <div class="legend-swatch" style="background:#FACC15;"></div>
-    <div class="legend-swatch" style="background:#F97316;"></div>
-    <div class="legend-swatch" style="background:#DC2626;"></div>
-    <span>100%</span>
-  </div>
+
 </div>
 
-<div style="overflow-x: auto;">
+<div style="overflow-x: auto; margin-top:8px;">
   <table>
     <thead id="grid-head"></thead>
     <tbody id="grid-body"></tbody>
   </table>
 </div>
 
-<div class="legend-row">
-  <div class="legend-item"><div class="legend-swatch" style="background:#f5f5f5; border: 1px solid #e0e0e0;"></div> No data</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#22C55E;"></div> Low (1–15%)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#A3E635;"></div> Good (16–50%)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#FACC15;"></div> Ideal (51–75%)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#F97316;"></div> High (76–90%)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#DC2626;"></div> Full (91–100%)</div>
+<!-- Legend below heatmap — 15% marker moved to above band2 -->
+<div style="margin-top:14px; display:flex; flex-direction:column; gap:3px;">
+  <!-- % markers above swatches — 15% above band2, 50% above band4, 100% at end -->
+  <div style="display:flex; position:relative; height:14px; width:154px;">
+    <span style="font-size:10px; color:#555; position:absolute; left:22px;">15%</span>
+    <span style="font-size:10px; color:#555; position:absolute; left:88px;">50%</span>
+    <span style="font-size:10px; color:#555; position:absolute; left:132px;">100%</span>
+  </div>
+  <!-- 7 colour swatches -->
+  <div style="display:flex; gap:2px;">
+    <div style="width:20px; height:20px; border-radius:3px; background:#14B8A6;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#6DCE70;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#A8D83A;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#EAB308;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#F97316;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#EF4444;"></div>
+    <div style="width:20px; height:20px; border-radius:3px; background:#DC2626;"></div>
+  </div>
+  <!-- Labels below swatches -->
+  <div style="display:flex; position:relative; height:14px; width:154px;">
+    <span style="font-size:10px; color:#555; position:absolute; left:0px;">Low</span>
+    <span style="font-size:10px; color:#555; position:absolute; left:55px;">Ideal</span>
+    <span style="font-size:10px; color:#555; position:absolute; left:120px;">High</span>
+  </div>
 </div>
 
 <div id="last-updated"></div>
@@ -72,7 +77,6 @@
   const END_HOUR   = 18;
   const SLOT_MINS  = 15;
 
-  // Build slot list
   const slots = [];
   for (let h = START_HOUR; h < END_HOUR; h++) {
     for (let m = 0; m < 60; m += SLOT_MINS) {
@@ -80,7 +84,6 @@
     }
   }
 
-  // Set date label
   const today = new Date();
   document.getElementById('date-label').textContent =
     today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -98,14 +101,24 @@
     head.innerHTML = html;
   }
 
+  // 7 bands:
+  // band1 = 1-15%   (teal)
+  // band2 = 16-25%  (light green)
+  // band3 = 26-50%  (yellow-green)
+  // band4 = 51-65%  (yellow)
+  // band5 = 66-75%  (orange)
+  // band6 = 76-90%  (red-orange)
+  // band7 = 91-100% (deep red)
   function getCellClass(pct) {
     if (pct === null) return 'no-data';
     if (pct === 0)    return 'zero';
-    if (pct <= 15)    return 'low';
-    if (pct <= 50)    return 'ideal';
-    if (pct <= 75)    return 'medium';
-    if (pct <= 90)    return 'high';
-    return 'full';
+    if (pct <= 15)    return 'band1';
+    if (pct <= 25)    return 'band2';
+    if (pct <= 50)    return 'band3';
+    if (pct <= 65)    return 'band4';
+    if (pct <= 75)    return 'band5';
+    if (pct <= 90)    return 'band6';
+    return 'band7';
   }
 
   function getCellText(pct) {
@@ -140,7 +153,6 @@
   function processData(data) {
     const dataMap = {};
     if (!data || !data.length) return dataMap;
-
     data.forEach(item => {
       if (item.variable !== 'utilisation_pct') return;
       const d = new Date(item.time);
@@ -152,15 +164,12 @@
         dataMap[key] = Math.round(item.value);
       }
     });
-
     return dataMap;
   }
 
-  // Initialise grid header immediately
   buildHeader();
   buildRow({});
 
-  // TagoIO Custom Widget SDK — receives data from the dashboard
   window.TagoIO.onStart(function(widget) {
     console.log('Widget started', widget);
   });
@@ -169,13 +178,11 @@
     console.log('Realtime data received:', data);
     const dataMap = processData(data);
     buildRow(dataMap);
-
     const updated = new Date();
     document.getElementById('last-updated').textContent =
       'Last updated: ' + updated.toLocaleTimeString('en-GB');
   });
 
-  // Signal to TagoIO that the widget is ready
   window.TagoIO.ready();
 </script>
 </body>
