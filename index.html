@@ -27,7 +27,7 @@
 </style>
 </head>
 <body>
- 
+
 <div class="header">
   <div>
     <div style="font-size:14px; font-weight:500; color:#1a1a1a;">Meeting Room Utilisation</div>
@@ -35,7 +35,7 @@
   </div>
 
 </div>
- 
+
 <div style="overflow-x: auto; margin-top:8px;">
   <table>
     <thead id="grid-head"></thead>
@@ -102,7 +102,7 @@
   }
 
   // 7 bands:
-  // band1 = 1-15%   (teal
+  // band1 = 1-15%   (teal)
   // band2 = 16-25%  (light green)
   // band3 = 26-50%  (yellow-green)
   // band4 = 51-65%  (yellow)
@@ -167,23 +167,47 @@
     return dataMap;
   }
 
+  const DEVICE_TOKEN  = "5e199bc2-3543-4da1-97f5-1dcad9f117d4";
+  const DEVICE_ID     = "6a06e2fcbc24cc000c1119fb";
+  const REFRESH_MS    = 5 * 60 * 1000;
+
+  async function loadFromAPI() {
+    try {
+      const url = `https://api.eu-w1.tago.io/data?variable=utilisation_pct&qty=200&ordination=asc&device=${DEVICE_ID}`;
+      const res = await fetch(url, {
+        headers: { 'Device-Token': DEVICE_TOKEN, 'Content-Type': 'application/json' }
+      });
+      const json = await res.json();
+      const dataMap = processData(json.result || []);
+      buildRow(dataMap);
+      const updated = new Date();
+      document.getElementById('last-updated').textContent =
+        'Last updated: ' + updated.toLocaleTimeString('en-GB');
+    } catch(e) {
+      console.error('API error:', e);
+    }
+  }
+
   buildHeader();
   buildRow({});
 
-  window.TagoIO.onStart(function(widget) {
-    console.log('Widget started', widget);
-  });
-
-  window.TagoIO.onRealtime(function(data) {
-    console.log('Realtime data received:', data);
-    const dataMap = processData(data);
-    buildRow(dataMap);
-    const updated = new Date();
-    document.getElementById('last-updated').textContent =
-      'Last updated: ' + updated.toLocaleTimeString('en-GB');
-  });
-
-  window.TagoIO.ready();
+  // Use TagoIO SDK if running inside TagoIO dashboard, otherwise fall back to direct API
+  if (window.TagoIO) {
+    window.TagoIO.onStart(function(widget) {
+      console.log('Widget started inside TagoIO');
+    });
+    window.TagoIO.onRealtime(function(data) {
+      const dataMap = processData(data);
+      buildRow(dataMap);
+      document.getElementById('last-updated').textContent =
+        'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+    });
+    window.TagoIO.ready();
+  } else {
+    // Running standalone — use direct API fetch
+    loadFromAPI();
+    setInterval(loadFromAPI, REFRESH_MS);
+  }
 </script>
 </body>
 </html>
