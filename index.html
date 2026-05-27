@@ -32,7 +32,6 @@
     <div style="font-size:14px; font-weight:500; color:#1a1a1a;">Meeting Room Utilisation</div>
     <div style="font-size:12px; color:#888; margin-top:2px;" id="date-label"></div>
   </div>
-
 </div>
 
 <div style="overflow-x: auto; margin-top:8px;">
@@ -42,15 +41,13 @@
   </table>
 </div>
 
-<!-- Legend below heatmap — 15% marker moved to above band2 -->
+<!-- Legend below heatmap -->
 <div style="margin-top:14px; display:flex; flex-direction:column; gap:3px;">
-  <!-- % markers above swatches — 15% above band2, 50% above band4, 100% at end -->
   <div style="display:flex; position:relative; height:14px; width:154px;">
     <span style="font-size:10px; color:#555; position:absolute; left:22px;">15%</span>
     <span style="font-size:10px; color:#555; position:absolute; left:88px;">50%</span>
     <span style="font-size:10px; color:#555; position:absolute; left:132px;">100%</span>
   </div>
-  <!-- 7 colour swatches -->
   <div style="display:flex; gap:2px;">
     <div style="width:20px; height:20px; border-radius:3px; background:#14B8A6;"></div>
     <div style="width:20px; height:20px; border-radius:3px; background:#6DCE70;"></div>
@@ -60,7 +57,6 @@
     <div style="width:20px; height:20px; border-radius:3px; background:#EF4444;"></div>
     <div style="width:20px; height:20px; border-radius:3px; background:#DC2626;"></div>
   </div>
-  <!-- Labels below swatches -->
   <div style="display:flex; position:relative; height:14px; width:154px;">
     <span style="font-size:10px; color:#555; position:absolute; left:0px;">Low</span>
     <span style="font-size:10px; color:#555; position:absolute; left:55px;">Ideal</span>
@@ -71,10 +67,13 @@
 <div id="last-updated"></div>
 
 <script>
-  const ROOM_NAME  = "Meeting Room 1";
-  const START_HOUR = 8;
-  const END_HOUR   = 18;
-  const SLOT_MINS  = 15;
+  const ROOM_NAME    = "Meeting Room 1";
+  const START_HOUR   = 8;
+  const END_HOUR     = 18;
+  const SLOT_MINS    = 15;
+  const DEVICE_TOKEN = "5e199bc2-3543-4da1-97f5-1dcad9f117d4";
+  const DEVICE_ID    = "6a06e2fcbc24cc000c1119fb";
+  const REFRESH_MS   = 5 * 60 * 1000;
 
   const slots = [];
   for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -83,9 +82,8 @@
     }
   }
 
-  const today = new Date();
   document.getElementById('date-label').textContent =
-    today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   function buildHeader() {
     const head = document.getElementById('grid-head');
@@ -100,14 +98,6 @@
     head.innerHTML = html;
   }
 
-  // 7 bands:
-  // band1 = 1-15%   (teal)
-  // band2 = 16-25%  (light green)
-  // band3 = 26-50%  (yellow-green)
-  // band4 = 51-65%  (yellow)
-  // band5 = 66-75%  (orange)
-  // band6 = 76-90%  (red-orange)
-  // band7 = 91-100% (deep red)
   function getCellClass(pct) {
     if (pct === null) return 'no-data';
     if (pct === 0)    return 'zero';
@@ -127,10 +117,8 @@
 
   function isCurrentSlot(h, m) {
     const now = new Date();
-    const nowH = now.getHours();
-    const nowM = now.getMinutes();
-    const slotM = Math.floor(nowM / SLOT_MINS) * SLOT_MINS;
-    return nowH === h && slotM === m;
+    const slotM = Math.floor(now.getMinutes() / SLOT_MINS) * SLOT_MINS;
+    return now.getHours() === h && slotM === m;
   }
 
   function buildRow(dataMap) {
@@ -156,8 +144,7 @@
       if (item.variable !== 'utilisation_pct') return;
       const d = new Date(item.time);
       const h = d.getHours();
-      const rawM = d.getMinutes();
-      const slotM = Math.floor(rawM / SLOT_MINS) * SLOT_MINS;
+      const slotM = Math.floor(d.getMinutes() / SLOT_MINS) * SLOT_MINS;
       if (h >= START_HOUR && h < END_HOUR) {
         const key = `${h}:${String(slotM).padStart(2, '0')}`;
         dataMap[key] = Math.round(item.value);
@@ -166,10 +153,6 @@
     return dataMap;
   }
 
-  const DEVICE_TOKEN  = "5e199bc2-3543-4da1-97f5-1dcad9f117d4";
-  const DEVICE_ID     = "6a06e2fcbc24cc000c1119fb";
-  const REFRESH_MS    = 5 * 60 * 1000;
-
   async function loadFromAPI() {
     try {
       const url = `https://api.eu-w1.tago.io/data?variable=utilisation_pct&qty=200&ordination=asc&device=${DEVICE_ID}`;
@@ -177,25 +160,27 @@
         headers: { 'Device-Token': DEVICE_TOKEN, 'Content-Type': 'application/json' }
       });
       const json = await res.json();
+      console.log('API response:', json);
       const dataMap = processData(json.result || []);
       buildRow(dataMap);
-      const updated = new Date();
       document.getElementById('last-updated').textContent =
-        'Last updated: ' + updated.toLocaleTimeString('en-GB');
+        'Last updated: ' + new Date().toLocaleTimeString('en-GB');
     } catch(e) {
       console.error('API error:', e);
     }
   }
 
+  // Initialise grid
   buildHeader();
   buildRow({});
 
-  // Try to load TagoIO SDK dynamically
-  const sdkScript = document.createElement('script');
-  sdkScript.src = 'https://admin.tago.io/dist/custom-widget.min.js';
-  sdkScript.onload = function() {
-    // SDK loaded successfully — running inside TagoIO
-    window.TagoIO.onStart(function(widget) {
+  // Wait 2 seconds to see if TagoIO SDK initialises
+  // If not, fall back to direct API fetch
+  let tagoioReady = false;
+
+  if (window.TagoIO) {
+    tagoioReady = true;
+    window.TagoIO.onStart(function() {
       console.log('Running inside TagoIO dashboard');
     });
     window.TagoIO.onRealtime(function(data) {
@@ -205,14 +190,15 @@
         'Last updated: ' + new Date().toLocaleTimeString('en-GB');
     });
     window.TagoIO.ready();
-  };
-  sdkScript.onerror = function() {
-    // SDK failed to load — running standalone, use direct API
-    console.log('Running standalone — using direct API');
-    loadFromAPI();
-    setInterval(loadFromAPI, REFRESH_MS);
-  };
-  document.head.appendChild(sdkScript);
+  }
+
+  setTimeout(function() {
+    if (!tagoioReady) {
+      console.log('TagoIO not detected — using direct API');
+      loadFromAPI();
+      setInterval(loadFromAPI, REFRESH_MS);
+    }
+  }, 2000);
 </script>
 </body>
 </html>
