@@ -178,12 +178,16 @@
   // Wait 1.5 seconds after page load to check if TagoIO SDK has fully initialised.
   // The SDK script loads in both contexts but window.TagoIO.onRealtime is only
   // available when running inside the TagoIO dashboard iframe.
-  setTimeout(function() {
+setTimeout(function() {
     if (window.TagoIO && typeof window.TagoIO.onRealtime === 'function') {
       console.log('Running inside TagoIO dashboard — using SDK');
-      window.TagoIO.onStart(function() {});
+      window.TagoIO.onStart(function(widget) {
+        console.log('onStart widget config:', JSON.stringify(widget));
+      });
       window.TagoIO.onRealtime(function(data) {
+        console.log('onRealtime data received:', JSON.stringify(data));
         const dataMap = processData(data);
+        console.log('processed dataMap:', JSON.stringify(dataMap));
         buildRow(dataMap);
         document.getElementById('last-updated').textContent =
           'Last updated: ' + new Date().toLocaleTimeString('en-GB');
