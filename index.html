@@ -181,18 +181,33 @@
 setTimeout(function() {
     if (window.TagoIO && typeof window.TagoIO.onRealtime === 'function') {
       console.log('Running inside TagoIO dashboard — using SDK');
+
       window.TagoIO.onStart(function(widget) {
         console.log('onStart widget config:', JSON.stringify(widget));
+        // Fetch historical data on load
+        window.TagoIO.getData(widget).then(function(data) {
+          console.log('getData response:', JSON.stringify(data));
+          const dataMap = processData(data);
+          buildRow(dataMap);
+          document.getElementById('last-updated').textContent =
+            'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+        }).catch(function(err) {
+          console.error('getData error:', err);
+          // Fall back to direct API if getData fails
+          loadFromAPI();
+        });
       });
+
       window.TagoIO.onRealtime(function(data) {
         console.log('onRealtime data received:', JSON.stringify(data));
         const dataMap = processData(data);
-        console.log('processed dataMap:', JSON.stringify(dataMap));
         buildRow(dataMap);
         document.getElementById('last-updated').textContent =
           'Last updated: ' + new Date().toLocaleTimeString('en-GB');
       });
+
       window.TagoIO.ready();
+
     } else {
       console.log('TagoIO SDK not active — using direct API');
       loadFromAPI();
