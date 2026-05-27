@@ -190,10 +190,13 @@
   buildHeader();
   buildRow({});
 
-  // Use TagoIO SDK if running inside TagoIO dashboard, otherwise fall back to direct API
-  if (window.TagoIO) {
+  // Try to load TagoIO SDK dynamically
+  const sdkScript = document.createElement('script');
+  sdkScript.src = 'https://admin.tago.io/dist/custom-widget.min.js';
+  sdkScript.onload = function() {
+    // SDK loaded successfully — running inside TagoIO
     window.TagoIO.onStart(function(widget) {
-      console.log('Widget started inside TagoIO');
+      console.log('Running inside TagoIO dashboard');
     });
     window.TagoIO.onRealtime(function(data) {
       const dataMap = processData(data);
@@ -202,11 +205,14 @@
         'Last updated: ' + new Date().toLocaleTimeString('en-GB');
     });
     window.TagoIO.ready();
-  } else {
-    // Running standalone — use direct API fetch
+  };
+  sdkScript.onerror = function() {
+    // SDK failed to load — running standalone, use direct API
+    console.log('Running standalone — using direct API');
     loadFromAPI();
     setInterval(loadFromAPI, REFRESH_MS);
-  }
+  };
+  document.head.appendChild(sdkScript);
 </script>
 </body>
 </html>
