@@ -143,13 +143,16 @@
     if (!data || !data.length) return dataMap;
     data.forEach(item => {
       if (item.variable !== 'utilisation_pct') return;
+      // Force UTC parsing then add Belfast BST offset (+1)
       const d = new Date(item.time);
-      const h = d.getHours() + 1; // BST (UTC+1) hardcoded for Belfast
-const slotM = Math.floor(d.getMinutes() / SLOT_MINS) * SLOT_MINS;
-if (h >= START_HOUR && h < END_HOUR) {
-  const key = `${h}:${String(slotM).padStart(2, '0')}`;
-  dataMap[key] = Math.round(item.value);
-}
+      const utcH = d.getUTCHours();
+      const utcM = d.getUTCMinutes();
+      const h = utcH + 1; // BST = UTC+1
+      const slotM = Math.floor(utcM / SLOT_MINS) * SLOT_MINS;
+      if (h >= START_HOUR && h < END_HOUR) {
+        const key = `${h}:${String(slotM).padStart(2, '0')}`;
+        dataMap[key] = Math.round(item.value);
+      }
     });
     return dataMap;
   }
