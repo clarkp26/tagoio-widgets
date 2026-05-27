@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://admin.tago.io/dist/custom-widget.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 16px; }
@@ -130,7 +131,7 @@
       const cls = getCellClass(pct);
       const txt = getCellText(pct);
       const isCurrent = isCurrentSlot(s.h, s.m);
-      const tooltip = `${String(s.h).padStart(2,'0')}:${String(s.m).padStart(2,'0')} — ${pct !== null ? pct + '%' : 'no data'}`;
+      const tooltip = `${String(s.h).padStart(2,'0')}:${String(s.m).padStart(2,'00')} — ${pct !== null ? pct + '%' : 'no data'}`;
       html += `<td class="cell ${cls}${isCurrent ? ' current-time' : ''}" title="${tooltip}">${txt}</td>`;
     });
     html += '</tr>';
@@ -174,31 +175,26 @@
   buildHeader();
   buildRow({});
 
-  // Wait 2 seconds to see if TagoIO SDK initialises
-  // If not, fall back to direct API fetch
-  let tagoioReady = false;
-
-  if (window.TagoIO) {
-    tagoioReady = true;
-    window.TagoIO.onStart(function() {
-      console.log('Running inside TagoIO dashboard');
-    });
-    window.TagoIO.onRealtime(function(data) {
-      const dataMap = processData(data);
-      buildRow(dataMap);
-      document.getElementById('last-updated').textContent =
-        'Last updated: ' + new Date().toLocaleTimeString('en-GB');
-    });
-    window.TagoIO.ready();
-  }
-
+  // Wait 1.5 seconds after page load to check if TagoIO SDK has fully initialised.
+  // The SDK script loads in both contexts but window.TagoIO.onRealtime is only
+  // available when running inside the TagoIO dashboard iframe.
   setTimeout(function() {
-    if (!tagoioReady) {
-      console.log('TagoIO not detected — using direct API');
+    if (window.TagoIO && typeof window.TagoIO.onRealtime === 'function') {
+      console.log('Running inside TagoIO dashboard — using SDK');
+      window.TagoIO.onStart(function() {});
+      window.TagoIO.onRealtime(function(data) {
+        const dataMap = processData(data);
+        buildRow(dataMap);
+        document.getElementById('last-updated').textContent =
+          'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+      });
+      window.TagoIO.ready();
+    } else {
+      console.log('TagoIO SDK not active — using direct API');
       loadFromAPI();
       setInterval(loadFromAPI, REFRESH_MS);
     }
-  }, 2000);
+  }, 1500);
 </script>
 </body>
 </html>
