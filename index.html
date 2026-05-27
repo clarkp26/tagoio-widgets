@@ -182,18 +182,6 @@ setTimeout(function() {
     if (window.TagoIO && typeof window.TagoIO.onRealtime === 'function') {
       console.log('Running inside TagoIO dashboard — using SDK');
 
-      // Call getData directly rather than waiting for onStart
-      window.TagoIO.getData().then(function(data) {
-        console.log('getData response:', JSON.stringify(data));
-        const dataMap = processData(data);
-        buildRow(dataMap);
-        document.getElementById('last-updated').textContent =
-          'Last updated: ' + new Date().toLocaleTimeString('en-GB');
-      }).catch(function(err) {
-        console.error('getData error:', err);
-        loadFromAPI();
-      });
-
       window.TagoIO.onRealtime(function(data) {
         console.log('onRealtime data received:', JSON.stringify(data));
         const dataMap = processData(data);
@@ -202,7 +190,19 @@ setTimeout(function() {
           'Last updated: ' + new Date().toLocaleTimeString('en-GB');
       });
 
+      // Call ready first to signal widget is loaded
+      // then fall back to API if no data arrives within 3 seconds
       window.TagoIO.ready();
+
+      setTimeout(function() {
+        const body = document.getElementById('grid-body');
+        const firstCell = body.querySelector('.band1, .band2, .band3, .band4, .band5, .band6, .band7');
+        if (!firstCell) {
+          console.log('No data from SDK after 3s — falling back to API');
+          loadFromAPI();
+          setInterval(loadFromAPI, REFRESH_MS);
+        }
+      }, 3000);
 
     } else {
       console.log('TagoIO SDK not active — using direct API');
