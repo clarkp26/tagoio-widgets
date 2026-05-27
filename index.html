@@ -144,12 +144,12 @@
     data.forEach(item => {
       if (item.variable !== 'utilisation_pct') return;
       const d = new Date(item.time);
-      const h = d.getHours();
-      const slotM = Math.floor(d.getMinutes() / SLOT_MINS) * SLOT_MINS;
-      if (h >= START_HOUR && h < END_HOUR) {
-        const key = `${h}:${String(slotM).padStart(2, '0')}`;
-        dataMap[key] = Math.round(item.value);
-      }
+      const h = d.getHours() + 1; // BST (UTC+1) hardcoded for Belfast
+const slotM = Math.floor(d.getMinutes() / SLOT_MINS) * SLOT_MINS;
+if (h >= START_HOUR && h < END_HOUR) {
+  const key = `${h}:${String(slotM).padStart(2, '0')}`;
+  dataMap[key] = Math.round(item.value);
+}
     });
     return dataMap;
   }
